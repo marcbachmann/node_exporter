@@ -48,13 +48,13 @@ func (c *filesystemCollector) GetStats() ([]filesystemStats, error) {
 		}
 
 		buf := new(syscall.Statfs_t)
-		err := syscall.Statfs(labels.mountPoint, buf)
+		err := syscall.Statfs(rootfsFilePath(labels.mountPoint), buf)
 		if err != nil {
 			stats = append(stats, filesystemStats{
 				labels:      labels,
 				deviceError: 1,
 			})
-			log.Debugf("Error on statfs() system call for %q: %s", labels.mountPoint, err)
+			log.Debugf("Error on statfs() system call for %q: %s", rootfsFilePath(labels.mountPoint), err)
 			continue
 		}
 
@@ -93,9 +93,13 @@ func mountPointDetails() ([]filesystemLabels, error) {
 		parts[1] = strings.Replace(parts[1], "\\040", " ", -1)
 		parts[1] = strings.Replace(parts[1], "\\011", "\t", -1)
 
+		// skip non rootfs paths if rootfsPath defined
+		if !rootfsPathDetect(parts[1]) {
+			continue
+		}
 		filesystems = append(filesystems, filesystemLabels{
 			device:     parts[0],
-			mountPoint: parts[1],
+			mountPoint: rootfsStripPrefix(parts[1]),
 			fsType:     parts[2],
 		})
 	}
